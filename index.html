@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動追客メール仕様詳細図</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            align-items: flex-start;
+        }
+        
+        /* メールプレビューエリア（左側） */
+        .preview-area {
+            flex: 0 0 375px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+        }
+        .email-header-bar {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+        }
+        .email-content {
+            padding: 0;
+        }
+        
+        /* スペック枠（右側） */
+        .spec-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 共通パーツスタイル */
+        .annotation-block {
+            background: #fff;
+            border-left: 5px solid #ccc;
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .annotation-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge {
+            background: #333;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .logic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .logic-table th, .logic-table td {
+            border: 1px solid #eee;
+            padding: 6px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .logic-table th {
+            background-color: #f9f9f9;
+            width: 120px;
+            font-weight: bold;
+            color: #555;
+            font-size: 11px;
+        }
+        .variable {
+            color: #d63384;
+            font-family: monospace;
+            background: #fdf2f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .db-ref {
+            font-size: 11px;
+            color: #0d6efd;
+            margin-top: 4px;
+            display: block;
+        }
+        .sub-section {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #eee;
+        }
+        .sub-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .sub-label {
+            font-size: 10px;
+            font-weight: bold;
+            color: #666;
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-right: 4px;
+        }
+
+        /* 紐づけ用カラー定義 */
+        .color-subject { border-color: #e91e63; }
+        .color-subject .badge { background: #e91e63; }
+        .highlight-subject { border: 2px solid #e91e63; position: relative; margin: 10px; padding: 5px; border-radius: 4px; }
+        .highlight-subject::before { content: "A"; position: absolute; left: -10px; top: -10px; background: #e91e63; color: white; width: 20px; height: 20px; text-align: center; line-height: 20px; border-radius: 50%; font-size: 12px; font-weight: bold; }
+
+        .color-body { border-color: #ff9800; }
+        .color-body .badge { background: #ff9800; }
+        .highlight-body { border: 2px solid #ff9800; position: relative; margin: 10px; padding: 5px; border-radius: 4px; }
+        .highlight-body::before { content: "B"; position: absolute; left: -10px; top: -10px; background: #ff9800; color: white; width: 20px; height: 20px; text-align: center; line-height: 20px; border-radius: 50%; font-size: 12px; font-weight: bold; }
+
+        /* Bエリア内部の分割スタイル */
+        .highlight-inner {
+            border: 1px dashed #ffb74d;
+            background-color: #fff8e1;
+            padding: 5px;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        .highlight-inner:last-child {
+            margin-bottom: 0;
+        }
+        .inner-label {
+            font-size: 10px;
+            font-weight: bold;
+            color: #f57c00;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .color-list { border-color: #2196f3; }
+        .color-list .badge { background: #2196f3; }
+        .highlight-list { border: 2px solid #2196f3; position: relative; margin: 10px; padding: 5px; border-radius: 4px; background: #fff; }
+        .highlight-list::before { content: "C"; position: absolute; left: -10px; top: -10px; background: #2196f3; color: white; width: 20px; height: 20px; text-align: center; line-height: 20px; border-radius: 50%; font-size: 12px; font-weight: bold; }
+
+        .color-card { border-color: #4caf50; }
+        .color-card .badge { background: #4caf50; }
+        .highlight-card { border: 2px dashed #4caf50; position: relative; margin: 5px 0; padding: 5px; border-radius: 4px; background: #fff; }
+        .highlight-card::before { content: "D"; position: absolute; right: -10px; top: -10px; background: #4caf50; color: white; width: 20px; height: 20px; text-align: center; line-height: 20px; border-radius: 50%; font-size: 12px; font-weight: bold; }
+
+        /* メール内のデザイン再現 */
+        .email-body-text { font-size: 14px; line-height: 1.6; color: #333; margin: 0; }
+        .property-card { display: flex; flex-direction: column; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
+        .p-image-area { width: 100%; height: 180px; background-color: #eee; background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width%3D%22100%25%22 height%3D%22100%25%22%3E%3Crect width%3D%22100%25%22 height%3D%22100%25%22 fill%3D%22%23dddddd%22%2F%3E%3Ctext x%3D%2250%25%22 y%3D%2250%25%22 dominant-baseline%3D%22middle%22 text-anchor%3D%22middle%22 font-family%3D%22sans-serif%22 font-size%3D%2214%22 fill%3D%22%23999999%22%3E物件画像エリア%3C%2Ftext%3E%3C%2Fsvg%3E'); background-size: cover; border-radius: 4px; margin-bottom: 10px; }
+        
+        .p-info { font-size: 12px; }
+        .p-title { font-weight: bold; color: #333; margin-bottom: 4px; font-size: 15px; }
+        .p-price-row { display: flex; align-items: baseline; margin-bottom: 6px; }
+        .p-price { color: #ff3b30; font-weight: bold; font-size: 18px; margin-right: 8px; }
+        .p-admin-fee { color: #666; font-size: 11px; }
+        
+        .p-tags { display: flex; gap: 5px; margin-bottom: 8px; }
+        .p-tag { border: 1px solid #999; color: #666; padding: 1px 4px; font-size: 10px; border-radius: 2px; }
+        
+        .p-specs { font-size: 13px; color: #333; margin-bottom: 4px; line-height: 1.4; }
+        .p-access { font-size: 13px; color: #333; margin-bottom: 8px; }
+        
+        .p-catch { background: #e0f2fe; color: #0284c7; padding: 8px; border-radius: 4px; font-size: 12px; margin-bottom: 0; font-weight: bold; display: block; border: 1px solid #bae6fd; }
+        
+        .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .btn { display: block; width: 100%; padding: 10px 0; text-align: center; border-radius: 4px; font-size: 13px; font-weight: bold; text-decoration: none; }
+        
+        .btn-primary { background: #22c55e; color: white; }
+        .btn-secondary { background: #fff; color: #4b5563; border: 1px solid #9ca3af; }
+
+        .footer-note {
+            font-size: 10px;
+            color: #888;
+            margin-top: 15px;
+            line-height: 1.4;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="header" style="margin-bottom: 20px;">
+    <h1 style="font-size: 20px; margin: 0;">自動追客機能：メール実装詳細仕様書（定期提案）</h1>
+    <p style="font-size: 14px; color: #666;">ドキュメント「自動追客機能.pdf」の「4.3 メッセージロジック」に基づく実装定義</p>
+</div>
+
+<div class="container">
+    <!-- 左側：メールプレビュー -->
+    <div class="preview-area">
+        <div class="email-header-bar">
+               <strong>To:</strong> <span class="variable">{{ユーザーメールアドレス}}</span><br>
+            <strong>From:</strong> エイブル <span class="variable">{{店舗メールアドレス}}</span><br>
+            <strong>Subject:</strong>
+            <div class="highlight-subject">
+                ご希望の条件にぴったりのお部屋が見つかりました！
+            </div>
+        </div>
+        <div class="email-content" style="padding: 15px;">
+            <!-- 挨拶 -->
+            <p class="email-body-text" style="margin-top: 0; margin-bottom: 10px;">
+                <span class="variable">{{ユーザー名}}</span> 様<br>
+                お世話になっております。<br>
+                エイブル <span class="variable">{{店舗名}}</span> です。
+            </p>
+
+            <!-- 冒頭文エリア -->
+            <div class="highlight-body">
+                <!-- メイン冒頭文 -->
+                <div class="highlight-inner">
+                    <span class="inner-label">▼メイン冒頭文</span>
+                    <p class="email-body-text">
+                        ご希望の条件を基にお探ししたところ、ぴったりのお部屋が見つかりました！
+                    </p>
+                </div>
+                <!-- サブ冒頭文 -->
+                <div class="highlight-inner">
+                    <span class="inner-label">▼サブ冒頭文</span>
+                    <p class="email-body-text">
+                        その他、周辺エリアも含めて、さらに<span class="variable">{{ロジック訴求文言}}</span>物件も併せてご紹介します！
+                    </p>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+            <!-- 物件リストエリア -->
+            <div class="highlight-list">
+                <!-- 物件カード（実データ表示） -->
+                <div>
+                    <div class="property-card">
+                        <!-- 画像 -->
+                        <div class="p-image-area"></div>
+                        
+                        <div class="p-info">
+                            <!-- 物件名 -->
+                            <div class="p-title">メゾン高円寺</div>
+                            
+                            <!-- 賃料・管理費 -->
+                            <div class="p-price-row">
+                                <span class="p-price">8.5万円</span>
+                                <span class="p-admin-fee">(管理費等 5,000円)</span>
+                            </div>
+                            
+                            <!-- 敷金・礼金 -->
+                            <div class="p-tags">
+                                <span class="p-tag">敷 1ヶ月</span>
+                                <span class="p-tag">礼 1ヶ月</span>
+                            </div>
+                            
+                            <!-- スペック -->
+                            <div class="p-specs">
+                                1K / 25.4㎡ / 築12年
+                            </div>
+                            
+                            <!-- アクセス -->
+                            <div class="p-access">
+                                JR中央線 高円寺駅 徒歩7分
+                            </div>
+
+                            <!-- 動的コメント枠（Dの点線をここに移動） -->
+                            <div class="highlight-card">
+                                <div class="p-catch">
+                                    高円寺駅は、新宿駅まで乗換0回 約8分です！
+                                </div>
+                            </div>
+                            
+                            <!-- ボタン -->
+                            <div class="btn-group">
+                                <a href="#" class="btn btn-primary">内見したい</a>
+                                <a href="#" class="btn btn-secondary">詳細を見る</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ループ終了 -->
+                <p style="text-align: center; color: #999; font-size: 11px;">(最大5件まで繰り返し表示)</p>
+            </div>
+
+            <!-- フッター -->
+            <div style="margin-top: 20px; font-size: 12px; color: #666; background: #f9f9f9; padding: 10px;">
+                いかがでしたか？<br>
+                気になる物件があれば、各物件の「内見したい」ボタンからお問い合わせをお願いします！<br>
+                <br>
+                エイブル <span class="variable">{{店舗名}}</span><br>
+                <span class="variable">{{店舗住所}}</span><br>
+                <span class="variable">{{店舗電話番号}}</span><br>
+                <br>
+                <a href="#" style="color:#999;">配信停止はこちら</a>
+                
+                <div class="footer-note">
+                    ※条件をご自身で登録されていない場合、過去にお問い合わせいただいた物件情報を基に、おすすめ物件を選定しております。<br><br>
+                    ※掲載状況はリアルタイムで変動するため、既に終了している場合があります。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側：仕様記述エリア -->
+    <div class="spec-area">
+        
+        <!-- A: 件名ロジック -->
+        <div class="annotation-block color-subject">
+            <div class="annotation-title"><span class="badge">A</span> 件名の出し分けロジック</div>
+            
+            <table class="logic-table">
+                <tr>
+                    <th>優先度1<br>(「合致」あり)</th>
+                    <td>
+                        <div style="margin-top:4px; margin-bottom:4px;">
+                            <span class="sub-label">条件入力あり</span><br>
+                            件名：ご希望の条件にぴったりのお部屋が見つかりました！
+                        </div>
+                        <div style="margin-top:4px;">
+                            <span class="sub-label">条件未入力</span><br>
+                            件名：お問合せ物件の条件と同じようなお部屋が見つかりました！
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>優先度2<br>(「合致」なし<br>かつ「映え」あり)</th>
+                    <td>
+                        件名：<span class="variable">{{ロジック訴求文言}}</span>お部屋が見つかりました！<br>
+                        <span style="color:#666; font-size:10px;">例：駅徒歩10分以内のお部屋が見つかりました！</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>優先度3<br>(「緩和」のみ)</th>
+                    <td>
+                        件名：条件に近いおすすめ物件が見つかりました！<br>
+                        <span style="color:#666; font-size:10px;">※固定文言</span>
+                    </td>
+                </tr>
+            </table>
+            
+            <div style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px;">
+                <div class="annotation-title" style="font-size: 12px;">使用変数定義</div>
+                <ul style="font-size: 11px; margin: 0; padding-left: 20px;">
+                    <li><span class="variable">{{ロジック訴求文言}}</span>：「詳細ロジックマスタ」より取得（例：駅徒歩〇分以内の）。<span class="db-ref">※DB: 詳細ロジックマスタを参照</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- B: 冒頭文ロジック -->
+        <div class="annotation-block color-body">
+            <div class="annotation-title"><span class="badge">B</span> 冒頭文の生成ロジック</div>
+            
+            <table class="logic-table">
+                <tr>
+                    <th colspan="2" style="background:#eee; text-align:center;">メイン冒頭文</th>
+                </tr>
+                <tr>
+                    <th>優先度1<br>(「合致」あり)</th>
+                    <td>
+                        <div class="sub-section">
+                            <span class="sub-label">条件入力あり</span><br>
+                            ご希望の条件を基にお探ししたところ、ぴったりのお部屋が見つかりました！
+                        </div>
+                        <div>
+                            <span class="sub-label">条件未入力</span><br>
+                            お問合せ物件の条件を基にお探ししたところ、イメージに近いお部屋が見つかりました！
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>優先度2<br>(「合致」なし<br>かつ「映え」あり)</th>
+                    <td>
+                        <div class="sub-section">
+                            <span class="sub-label">通勤通学駅起点</span><br>
+                            通勤・通学先へのアクセスを重視し、<span class="variable">{{ロジック訴求文言}}</span>お部屋をピックアップしました！
+                        </div>
+                        <div>
+                            <span class="sub-label">希望駅・エリア起点</span><br>
+                            ご希望エリアの周辺も含めて、<span class="variable">{{ロジック訴求文言}}</span>お部屋をピックアップしました！
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>優先度3<br>(「緩和」のみ)</th>
+                    <td>
+                        <div class="sub-section">
+                            <span class="sub-label">通勤通学駅起点</span><br>
+                            通勤・通学先へのアクセスを重視し、<span class="variable">{{ロジック訴求文言}}</span>お部屋も探してみました！
+                        </div>
+                        <div>
+                            <span class="sub-label">希望駅・エリア起点</span><br>
+                            ご希望エリアの周辺も含めて、<span class="variable">{{ロジック訴求文言}}</span>お部屋も探してみました！
+                        </div>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <th colspan="2" style="background:#eee; text-align:center;">サブ冒頭文（追記ロジック）</th>
+                </tr>
+                <tr>
+                    <th>映え用<br>サブ冒頭文</th>
+                    <td>
+                        <strong>メイン冒頭文が「合致」の訴求で、提案物件に「映え」がある場合</strong><br>
+                        その他、周辺エリアも含めて、さらに<span class="variable">{{ロジック訴求文言}}</span>物件も併せてご紹介します！
+                    </td>
+                </tr>
+                <tr>
+                    <th>緩和用<br>サブ冒頭文</th>
+                    <td>
+                        <strong>メイン冒頭文が「合致か映え」の訴求で、提案物件に「緩和」がある場合</strong><br>
+                        その他、条件に近いおすすめ物件も併せて掲載しています。<br>
+                    </td>
+                </tr>
+            </table>
+            
+            <p style="font-size:10px; color:#666; margin-top:5px; margin-bottom:0;">
+                ※単一（合致のみ/映えのみ/緩和のみ）の場合はサブ冒頭文なし
+            </p>
+        </div>
+
+        <!-- C: 物件リスト制御 -->
+        <div class="annotation-block color-list">
+            <div class="annotation-title"><span class="badge">C</span> 物件リスト表示</div>
+            <ul style="font-size: 12px; margin: 0; padding-left: 20px;">
+                <li><strong>表示件数：</strong>最大5件。提案ロジックにより選定された物件を表示。</li>
+                <li><strong>ソート順：</strong>デフォルトは ①築年数が新しい順 ②駅徒歩が短い順 ③家賃が安い順。<span class="db-ref">※提案パターンマスタで設定変更可能</span></li>
+                <li><strong>レイアウト：</strong>PC時は横並び、SP時は縦並び（本図はSP表示イメージ）。</li>
+            </ul>
+        </div>
+
+        <!-- D: 動的コメント枠 -->
+        <div class="annotation-block color-card">
+            <div class="annotation-title"><span class="badge">D</span> 動的コメント枠（推しコメント）</div>
+            <p style="font-size: 12px; margin: 0 0 10px;">物件ごとに最適なコメントをマスタから1つ選択して表示する。<br>
+            <span style="font-size:10px; color:#666;">（左記プレビューは下記優先度2の場合の表示例）</span></p>
+            
+            <table class="logic-table">
+                <tr>
+                    <th>優先度1：<br>(映え物件の場合)</th>
+                    <td>
+                        <strong>映えロジックの訴求</strong><br>
+                        <span class="variable">{{ロジック訴求文言}}</span>お部屋です！
+                    </td>
+                </tr>
+                <tr>
+                    <th>優先度2：<br>(1に該当せず、主要駅マスタに最寄り駅データがある場合)</th>
+                    <td>
+                        <strong>主要駅アクセスの訴求</strong><br>
+                        例：高円寺駅は、新宿駅まで乗換0回、約8分です！<br>
+                        <span class="db-ref">※DB: 主要駅マスタを参照</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>優先度3：<br>(1,2に該当しない場合)</th>
+                    <td>
+                        <strong>設備の訴求</strong><br>
+                        既存の「設備推しコメント」を表示。<span class="db-ref">※DB: 推しコメントマスタを参照</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
